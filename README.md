@@ -1,6 +1,6 @@
 # Line 貼圖全能工具箱
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview/vitejs-vite?startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
 
 GitHub source of truth for the LINE sticker toolkit project.
 
@@ -60,8 +60,10 @@ For StackBlitz, add the same variable in the project environment variable settin
 ## StackBlitz Notes
 - Direct GitHub import works immediately when the repository is public.
 - If the repository stays private, StackBlitz requires a private-repo capable workflow on the StackBlitz side.
+- For this repository, the most reliable import URL is the one that points directly to `tree/<branch>/vitejs-vite`.
+- If Chrome gets stuck on `Cloning repo from GitHub`, retry in an Incognito window first. If that works, the usual fix is clearing StackBlitz site data or allowing StackBlitz / WebContainer third-party storage and popups.
 
 ## Links
 - GitHub repo: [pcedison/line-sticker-maker](https://github.com/pcedison/line-sticker-maker)
-- StackBlitz live preview: [line-sticker-maker preview on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
+- StackBlitz live preview: [line-sticker-maker preview on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview/vitejs-vite?startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
 - Stable branch on GitHub: [main branch](https://github.com/pcedison/line-sticker-maker/tree/main)
