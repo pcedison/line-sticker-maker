@@ -17,6 +17,11 @@ VITE_GEMINI_API_KEY=your_key_here
 
 Do not commit `.env`.
 
+If you are using StackBlitz from the GitHub preview URL, prefer setting
+`VITE_GEMINI_API_KEY` in `Settings > Variables` for the repository scope
+`pcedison/line-sticker-maker`. A fresh GitHub-backed workspace may not keep a
+manually created temporary `.env` file.
+
 ## Architecture
 - `src/app`: application shell
 - `src/features`: product workflows grouped by feature

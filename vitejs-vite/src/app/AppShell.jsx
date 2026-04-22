@@ -92,7 +92,11 @@ const AppShellContent = () => {
                   <code className="rounded bg-slate-950/50 px-1.5 py-0.5 text-xs text-amber-50">
                     VITE_GEMINI_API_KEY
                   </code>
-                  。尺寸縮放功能仍可正常使用。
+                  。若你是在 StackBlitz 的 GitHub preview 中工作，請優先到{' '}
+                  <code className="rounded bg-slate-950/50 px-1.5 py-0.5 text-xs text-amber-50">
+                    Settings &gt; Variables
+                  </code>{' '}
+                  為 repo 設定同名變數，避免新開 workspace 時遺失。尺寸縮放功能仍可正常使用。
                 </p>
               </div>
             </div>
