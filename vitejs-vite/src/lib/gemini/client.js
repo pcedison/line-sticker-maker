@@ -59,7 +59,30 @@ export const generateStickerCopyPlan = async ({ theme, signal }) => {
     signal,
     payload: {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 256,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
+        responseSchema: {
+          type: 'OBJECT',
+          required: ['style', 'texts'],
+          properties: {
+            style: {
+              type: 'STRING',
+            },
+            texts: {
+              type: 'ARRAY',
+              minItems: 4,
+              maxItems: 4,
+              items: {
+                type: 'STRING',
+              },
+            },
+          },
+        },
+      },
     },
   });
 
