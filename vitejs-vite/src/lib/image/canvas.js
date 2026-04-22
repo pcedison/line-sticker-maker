@@ -1,4 +1,8 @@
-import { LINE_STICKER_SIZE } from '../constants/line';
+import {
+  LINE_STICKER_GRID,
+  LINE_STICKER_SIZE,
+  LINE_STICKER_TEXT_OVERLAY,
+} from '../constants/line';
 
 export const loadImage = (src) =>
   new Promise((resolve, reject) => {
@@ -125,7 +129,11 @@ export const cropAndResizeForLineSticker = async (base64) => {
   return outputCanvas.toDataURL('image/png');
 };
 
-export const splitGridIntoStickers = async (gridDataUrl, rows = 2, cols = 2) => {
+export const splitGridIntoStickers = async (
+  gridDataUrl,
+  rows = LINE_STICKER_GRID.rows,
+  cols = LINE_STICKER_GRID.cols
+) => {
   const image = await loadImage(gridDataUrl);
   const pieceWidth = Math.floor(image.width / cols);
   const pieceHeight = Math.floor(image.height / rows);
@@ -151,6 +159,167 @@ export const splitGridIntoStickers = async (gridDataUrl, rows = 2, cols = 2) => 
   }
 
   return pieces;
+};
+
+const buildRoundedRect = (context, x, y, width, height, radius) => {
+  if (typeof context.roundRect === 'function') {
+    context.beginPath();
+    context.roundRect(x, y, width, height, radius);
+    return;
+  }
+
+  const adjustedRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + adjustedRadius, y);
+  context.arcTo(x + width, y, x + width, y + height, adjustedRadius);
+  context.arcTo(x + width, y + height, x, y + height, adjustedRadius);
+  context.arcTo(x, y + height, x, y, adjustedRadius);
+  context.arcTo(x, y, x + width, y, adjustedRadius);
+  context.closePath();
+};
+
+const getStickerTextFontSize = (context, text, maxWidth) => {
+  const {
+    fontFamily,
+    fontMaxSize,
+    fontMinSize,
+    fontWeight,
+  } = LINE_STICKER_TEXT_OVERLAY;
+
+  for (let fontSize = fontMaxSize; fontSize >= fontMinSize; fontSize -= 2) {
+    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    if (context.measureText(text).width <= maxWidth) {
+      return fontSize;
+    }
+  }
+
+  return fontMinSize;
+};
+
+const drawStickerCaption = (context, text) => {
+  if (!text) {
+    return;
+  }
+
+  const {
+    bandPaddingBottom,
+    bandPaddingX,
+    fontFamily,
+    fontWeight,
+    strokeWidth,
+  } = LINE_STICKER_TEXT_OVERLAY;
+
+  const bandHeight = LINE_STICKER_TEXT_OVERLAY.reservedHeight;
+  const bandWidth = LINE_STICKER_SIZE.safeWidth;
+  const bandX = (LINE_STICKER_SIZE.width - bandWidth) / 2;
+  const bandY =
+    LINE_STICKER_SIZE.height -
+    bandHeight -
+    ((LINE_STICKER_SIZE.height - LINE_STICKER_SIZE.safeHeight) / 2);
+  const textMaxWidth = bandWidth - bandPaddingX * 2;
+  const fontSize = getStickerTextFontSize(context, text, textMaxWidth);
+
+  buildRoundedRect(context, bandX, bandY + bandPaddingBottom, bandWidth, bandHeight - 8, 28);
+  context.fillStyle = 'rgba(8, 15, 32, 0.36)';
+  context.fill();
+  context.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  context.lineWidth = 1.2;
+  context.stroke();
+
+  context.save();
+  context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.lineJoin = 'round';
+  context.strokeStyle = 'rgba(13, 18, 30, 0.96)';
+  context.lineWidth = strokeWidth;
+  context.shadowColor = 'rgba(0, 0, 0, 0.26)';
+  context.shadowBlur = 12;
+  context.fillStyle = '#ffffff';
+  const textY = bandY + bandHeight / 2 + 6;
+  context.strokeText(text, LINE_STICKER_SIZE.width / 2, textY);
+  context.fillText(text, LINE_STICKER_SIZE.width / 2, textY);
+  context.restore();
+};
+
+export const buildLineStickerFromGridPiece = async (base64, caption = '') => {
+  const image = await loadImage(base64);
+  const { canvas, context } = createCanvas(image.width, image.height, true);
+  context.drawImage(image, 0, 0);
+
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const bounds = getContentBounds(imageData.data, canvas.width, canvas.height, 10);
+  const croppedWidth = bounds.maxX - bounds.minX + 1;
+  const croppedHeight = bounds.maxY - bounds.minY + 1;
+
+  const safeTop = (LINE_STICKER_SIZE.height - LINE_STICKER_SIZE.safeHeight) / 2;
+  const captionReserve = caption ? LINE_STICKER_TEXT_OVERLAY.reservedHeight : 0;
+  const availableWidth = LINE_STICKER_SIZE.safeWidth;
+  const availableHeight = LINE_STICKER_SIZE.safeHeight - captionReserve;
+  const scale = Math.min(availableWidth / croppedWidth, availableHeight / croppedHeight);
+  const drawWidth = croppedWidth * scale;
+  const drawHeight = croppedHeight * scale;
+  const offsetX = (LINE_STICKER_SIZE.width - drawWidth) / 2;
+  const offsetY = safeTop + (availableHeight - drawHeight) / 2;
+
+  const { canvas: outputCanvas, context: outputContext } = createCanvas(
+    LINE_STICKER_SIZE.width,
+    LINE_STICKER_SIZE.height
+  );
+
+  outputContext.drawImage(
+    canvas,
+    bounds.minX,
+    bounds.minY,
+    croppedWidth,
+    croppedHeight,
+    offsetX,
+    offsetY,
+    drawWidth,
+    drawHeight
+  );
+
+  drawStickerCaption(outputContext, caption);
+
+  return outputCanvas.toDataURL('image/png');
+};
+
+export const combineStickerImagesIntoGrid = async (
+  pieces,
+  rows = LINE_STICKER_GRID.rows,
+  cols = LINE_STICKER_GRID.cols
+) => {
+  if (!Array.isArray(pieces) || pieces.length === 0) {
+    throw new Error('沒有可用的貼圖可以合成預覽網格。');
+  }
+
+  const firstImage = await loadImage(pieces[0]);
+  const pieceWidth = firstImage.width;
+  const pieceHeight = firstImage.height;
+  const { canvas, context } = createCanvas(pieceWidth * cols, pieceHeight * rows);
+
+  await Promise.all(
+    pieces.map(async (piece, index) => {
+      const image = index === 0 ? firstImage : await loadImage(piece);
+      const x = (index % cols) * pieceWidth;
+      const y = Math.floor(index / cols) * pieceHeight;
+      context.drawImage(image, x, y, pieceWidth, pieceHeight);
+    })
+  );
+
+  return canvas.toDataURL('image/png');
+};
+
+export const prepareStickerSetFromGrid = async (gridDataUrl, texts) => {
+  const rawPieces = await splitGridIntoStickers(gridDataUrl);
+  const stickers = await Promise.all(
+    rawPieces.map((piece, index) =>
+      buildLineStickerFromGridPiece(piece, texts[index] || `圖${index + 1}`)
+    )
+  );
+  const previewGrid = await combineStickerImagesIntoGrid(stickers);
+
+  return { previewGrid, stickers };
 };
 
 const rgbToHsl = (r, g, b) => {

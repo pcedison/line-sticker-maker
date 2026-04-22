@@ -1,4 +1,8 @@
 import { GEMINI_API_KEY } from '../config/env';
+import {
+  buildStickerCopyPrompt,
+  buildStickerGridPrompt,
+} from './sticker-prompts';
 
 const GEMINI_MODELS = {
   text: 'gemini-2.5-flash',
@@ -45,84 +49,110 @@ const requestGemini = async ({ model, payload, signal }) => {
   return response.json();
 };
 
-export const generateStickerCopyPlan = async ({ theme, signal }) => {
-  const prompt = `你是一個專業的 Line 貼圖文案企劃。請根據主題「${theme}」，想出 4 句實用、有趣、簡短（每句建議 2~5 個字）的貼圖文字。
-另外，推薦一個適合這個主題的繪圖風格（例如：日系水彩、搞怪美式、可愛萌寵）。
-請嚴格輸出 JSON 格式，不要包含其他說明文字，格式如下：
-{
-  "style": "推薦的風格",
-  "texts": ["第一句", "第二句", "第三句", "第四句"]
-}`;
+const normalizeStickerText = (value) =>
+  String(value)
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[A-Za-z0-9]/g, '');
 
-  const data = await requestGemini({
-    model: GEMINI_MODELS.text,
-    signal,
-    payload: {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        maxOutputTokens: 256,
-        thinkingConfig: {
-          thinkingBudget: 0,
-        },
-        responseSchema: {
-          type: 'OBJECT',
-          required: ['style', 'texts'],
-          properties: {
-            style: {
-              type: 'STRING',
-            },
-            texts: {
-              type: 'ARRAY',
-              minItems: 4,
-              maxItems: 4,
-              items: {
-                type: 'STRING',
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!textResponse) {
-    throw new Error('Gemini 未回傳可用的文案 JSON。');
-  }
-
+const parseStickerCopyPlan = (textResponse) => {
   const normalized = textResponse
     .trim()
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/, '');
 
-  try {
-    const parsed = JSON.parse(normalized);
+  const parsed = JSON.parse(normalized);
 
-    if (!Array.isArray(parsed?.texts)) {
-      throw new Error('缺少 texts 陣列');
-    }
-
-    const texts = parsed.texts
-      .map((value) => String(value).trim())
-      .filter(Boolean)
-      .slice(0, 4);
-
-    if (texts.length !== 4) {
-      throw new Error('texts 長度不是 4');
-    }
-
-    return {
-      style: typeof parsed.style === 'string' ? parsed.style.trim() : '',
-      texts,
-    };
-  } catch {
-    throw new Error(
-      'Gemini 文案結果格式不正確，請重試或縮短主題描述。預期需要 4 句文字與 1 個 style。'
-    );
+  if (!Array.isArray(parsed?.texts)) {
+    throw new Error('缺少 texts 陣列');
   }
+
+  const texts = parsed.texts
+    .map((value) => normalizeStickerText(value))
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (texts.length !== 4) {
+    throw new Error('texts 長度不是 4');
+  }
+
+  if (new Set(texts).size !== texts.length) {
+    throw new Error('texts 內容重複');
+  }
+
+  if (
+    texts.some(
+      (text) => text.length < 2 || text.length > 6 || /[A-Za-z0-9]/.test(text)
+    )
+  ) {
+    throw new Error('texts 不符合繁中文字數規則');
+  }
+
+  const style =
+    typeof parsed.style === 'string' ? parsed.style.trim().replace(/\s+/g, ' ') : '';
+
+  if (!style) {
+    throw new Error('缺少 style');
+  }
+
+  return { style, texts };
+};
+
+export const generateStickerCopyPlan = async ({ theme, signal }) => {
+  const prompt = buildStickerCopyPrompt(theme);
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const data = await requestGemini({
+        model: GEMINI_MODELS.text,
+        signal,
+        payload: {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 256,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+            responseSchema: {
+              type: 'OBJECT',
+              required: ['style', 'texts'],
+              properties: {
+                style: {
+                  type: 'STRING',
+                },
+                texts: {
+                  type: 'ARRAY',
+                  minItems: 4,
+                  maxItems: 4,
+                  items: {
+                    type: 'STRING',
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!textResponse) {
+        throw new Error('Gemini 未回傳可用的文案 JSON。');
+      }
+
+      return parseStickerCopyPlan(textResponse);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    lastError?.message ||
+      'Gemini 文案結果格式不正確，請重試或縮短主題描述。預期需要 4 句文字與 1 個 style。'
+  );
 };
 
 export const generateImageWithReference = async ({
@@ -157,3 +187,6 @@ export const generateImageWithReference = async ({
 
   return `data:image/png;base64,${imageData}`;
 };
+
+export const buildStickerImagePrompt = ({ style, texts, isFollowUp = false }) =>
+  buildStickerGridPrompt({ style, texts, isFollowUp });

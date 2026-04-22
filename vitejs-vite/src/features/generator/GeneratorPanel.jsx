@@ -10,8 +10,10 @@ import {
   Square,
   Trash2,
   Upload,
+  WandSparkles,
 } from 'lucide-react';
 import { useStickerGenerator } from './useStickerGenerator';
+import { isGeneratorLabEnabled } from '../../lib/config/runtime';
 
 const GeneratorPanel = () => {
   const {
@@ -32,6 +34,7 @@ const GeneratorPanel = () => {
     selectedHistoryId,
     applySourceFile,
     clearSourceImage,
+    loadDemoSource,
     updateText,
     generateInspiration,
     startGeneration,
@@ -41,6 +44,7 @@ const GeneratorPanel = () => {
     downloadAll,
     restoreHistoryItem,
   } = useStickerGenerator();
+  const showGeneratorLab = isGeneratorLabEnabled();
 
   return (
     <div className="grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -55,8 +59,36 @@ const GeneratorPanel = () => {
             </div>
           </div>
 
+          {showGeneratorLab && !sourceImage && (
+            <div className="mb-4 rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
+                    <WandSparkles size={16} />
+                    Quick Verify Lab
+                  </div>
+                  <p className="mt-1 text-xs leading-6 text-sky-100/80">
+                    僅在測試模式顯示。可直接載入內建角色圖與預設主題，快速驗證生成流程。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  data-testid="load-demo-source-button"
+                  onClick={loadDemoSource}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/10 px-4 py-3 text-sm font-semibold text-sky-50 transition hover:bg-sky-300/20"
+                >
+                  <Sparkles size={16} />
+                  載入測試素材
+                </button>
+              </div>
+            </div>
+          )}
+
           {!sourceImage ? (
-            <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-white/15 bg-slate-900/40 px-6 py-12 text-center transition hover:border-emerald-400/40 hover:bg-slate-900">
+            <label
+              data-testid="source-upload-trigger"
+              className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-white/15 bg-slate-900/40 px-6 py-12 text-center transition hover:border-emerald-400/40 hover:bg-slate-900"
+            >
               <Upload className="mb-3 h-10 w-10 text-slate-400" />
               <div className="text-sm font-medium text-white">
                 點擊或拖曳上傳角色圖片
@@ -68,6 +100,7 @@ const GeneratorPanel = () => {
                 type="file"
                 accept="image/png, image/jpeg, image/webp"
                 className="hidden"
+                data-testid="source-upload-input"
                 onChange={(event) => applySourceFile(event.target.files?.[0])}
               />
             </label>
@@ -131,12 +164,14 @@ const GeneratorPanel = () => {
                 value={themeInput}
                 onChange={(event) => setThemeInput(event.target.value)}
                 placeholder="例如：厭世上班族、戀愛小恐龍、貓咪客服"
+                data-testid="theme-input"
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-violet-400/40"
               />
               <button
                 type="button"
                 onClick={generateInspiration}
                 disabled={isThinking || !themeInput.trim() || !hasGeminiApiKey}
+                data-testid="generate-copy-button"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isThinking ? (
@@ -160,9 +195,13 @@ const GeneratorPanel = () => {
                 type="text"
                 value={styleInput}
                 onChange={(event) => setStyleInput(event.target.value)}
+                data-testid="style-input"
                 className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400/40"
                 placeholder="例如：可愛插畫、粉彩黏土、Q版漫畫"
               />
+              <p className="mt-2 text-xs leading-6 text-slate-500">
+                最終輸出會由系統自動覆蓋繁體中文標題，降低模型自行寫字時混入英文或錯字的風險。
+              </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -175,6 +214,7 @@ const GeneratorPanel = () => {
                     type="text"
                     value={text}
                     onChange={(event) => updateText(index, event.target.value)}
+                    data-testid={`sticker-text-${index}`}
                     className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400/40"
                     placeholder="輸入貼圖短句"
                   />
@@ -214,6 +254,7 @@ const GeneratorPanel = () => {
                 type="button"
                 onClick={() => startGeneration(false)}
                 disabled={!sourceImage || !hasGeminiApiKey}
+                data-testid="start-generation-button"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Play size={16} fill="currentColor" />
@@ -276,6 +317,7 @@ const GeneratorPanel = () => {
               <img
                 src={generatedGrid}
                 alt="Generated sticker grid"
+                data-testid="generated-grid"
                 className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10"
               />
             </div>
@@ -354,6 +396,7 @@ const GeneratorPanel = () => {
                 <button
                   type="button"
                   onClick={splitGeneratedGrid}
+                  data-testid="split-grid-button"
                   className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-400"
                 >
                   <Scissors size={16} />
@@ -375,6 +418,7 @@ const GeneratorPanel = () => {
                   {splitImages.map((image, index) => (
                     <article
                       key={`sticker-${index}`}
+                      data-testid={`split-sticker-${index}`}
                       className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70"
                     >
                       <div className="checkerboard aspect-[370/320] p-3">

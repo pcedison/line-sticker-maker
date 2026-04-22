@@ -2,6 +2,7 @@ import { startTransition, useRef, useState } from 'react';
 import { useNotices } from '../../app/useNotices';
 import { HAS_GEMINI_API_KEY } from '../../lib/config/env';
 import {
+  DEFAULT_STICKER_THEME,
   DEFAULT_STICKER_STYLE,
   DEFAULT_STICKER_TEXTS,
 } from '../../lib/constants/line';
@@ -13,13 +14,14 @@ import {
   fileToDataUrl,
 } from '../../lib/files/file-helpers';
 import {
+  buildStickerImagePrompt,
   generateImageWithReference,
   generateStickerCopyPlan,
 } from '../../lib/gemini/client';
 import {
-  cropAndResizeForLineSticker,
-  splitGridIntoStickers,
+  prepareStickerSetFromGrid,
 } from '../../lib/image/canvas';
+import demoHeroUrl from '../../assets/hero.png';
 
 const createDefaultTexts = () => [...DEFAULT_STICKER_TEXTS];
 const HISTORY_LIMIT = 6;
@@ -35,6 +37,7 @@ export const useStickerGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedGrid, setGeneratedGrid] = useState(null);
   const [splitImages, setSplitImages] = useState([]);
+  const [preparedImages, setPreparedImages] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [generationHistory, setGenerationHistory] = useState([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
@@ -44,6 +47,7 @@ export const useStickerGenerator = () => {
   const resetOutputs = () => {
     setGeneratedGrid(null);
     setSplitImages([]);
+    setPreparedImages([]);
   };
 
   const applySourceFile = async (file) => {
@@ -78,6 +82,25 @@ export const useStickerGenerator = () => {
       message: '工作區已重設，隨時可以上傳新的角色圖。',
       tone: 'info',
       duration: 2200,
+    });
+  };
+
+  const loadDemoSource = async () => {
+    const response = await fetch(demoHeroUrl);
+    const blob = await response.blob();
+    const file = new File([blob], 'hero.png', {
+      type: blob.type || 'image/png',
+    });
+
+    await applySourceFile(file);
+    setThemeInput(DEFAULT_STICKER_THEME);
+    setStyleInput(DEFAULT_STICKER_STYLE);
+    setTexts(createDefaultTexts());
+    notify({
+      title: '測試素材已載入',
+      message: '已套用內建角色圖與測試主題，可直接驗證 AI 流程。',
+      tone: 'info',
+      duration: 2600,
     });
   };
 
@@ -162,31 +185,24 @@ export const useStickerGenerator = () => {
       duration: 2200,
     });
 
-    const basePrompt = `CRITICAL INSTRUCTION: You MUST generate a SINGLE image consisting of EXACTLY a 2x2 grid (4 equal square panels). Do NOT generate just one single picture.
-Subject: The character from the reference image.
-Style: ${styleInput}
-Format: A sticker sheet divided into four distinct sections.
-
-Panel 1 (Top-Left): Character acting out "${texts[0]}". Add the text "${texts[0]}" in Traditional Chinese.
-Panel 2 (Top-Right): Character acting out "${texts[1]}". Add the text "${texts[1]}" in Traditional Chinese.
-Panel 3 (Bottom-Left): Character acting out "${texts[2]}". Add the text "${texts[2]}" in Traditional Chinese.
-Panel 4 (Bottom-Right): Character acting out "${texts[3]}". Add the text "${texts[3]}" in Traditional Chinese.
-
-Make the character's poses, expressions, and environments completely different in each panel. Ensure clear boundaries between the four squares.`;
-
-    const finalPrompt = isFollowUp
-      ? `${basePrompt}
-Note: Make sure these actions are completely different from the previous generation.`
-      : basePrompt;
-
     try {
+      const finalPrompt = buildStickerImagePrompt({
+        style: styleInput,
+        texts,
+        isFollowUp,
+      });
       const outputImage = await generateImageWithReference({
         prompt: finalPrompt,
         base64Data: dataUrlToBase64(sourceImage),
         signal: abortControllerRef.current.signal,
       });
+      const { previewGrid, stickers } = await prepareStickerSetFromGrid(
+        outputImage,
+        texts
+      );
 
-      setGeneratedGrid(outputImage);
+      setGeneratedGrid(previewGrid);
+      setPreparedImages(stickers);
       setSplitImages([]);
       const historyItem = {
         id:
@@ -196,7 +212,8 @@ Note: Make sure these actions are completely different from the previous generat
         createdAt: new Date().toISOString(),
         style: styleInput,
         texts: [...texts],
-        grid: outputImage,
+        grid: previewGrid,
+        splitImages: stickers,
         sourceFileName,
       };
 
@@ -205,8 +222,8 @@ Note: Make sure these actions are completely different from the previous generat
       notify({
         title: '四宮格已生成',
         message: isFollowUp
-          ? '已新增一個同主題的新版本，可直接切圖或回看歷史版本。'
-          : '可以直接切圖，或繼續生成更多變體版本。',
+          ? '已新增一個同主題的新版本，預覽與輸出都會套用可控的繁中文字覆蓋。'
+          : '預覽已套用可控的繁中文字覆蓋，可以直接切圖或繼續生成更多變體版本。',
         tone: 'success',
       });
     } catch (error) {
@@ -234,25 +251,20 @@ Note: Make sure these actions are completely different from the previous generat
   };
 
   const splitGeneratedGrid = async () => {
-    if (!generatedGrid) {
+    if (!generatedGrid || preparedImages.length === 0) {
       return;
     }
 
     setErrorMsg('');
 
     try {
-      const rawPieces = await splitGridIntoStickers(generatedGrid);
-      const croppedPieces = await Promise.all(
-        rawPieces.map((piece) => cropAndResizeForLineSticker(piece))
-      );
-
       startTransition(() => {
-        setSplitImages(croppedPieces);
+        setSplitImages(preparedImages);
       });
 
       notify({
         title: '切圖完成',
-        message: '四張 LINE 規格貼圖已準備好下載。',
+        message: '四張 LINE 規格貼圖已完成繁中文字覆蓋並準備好下載。',
         tone: 'success',
       });
     } catch (error) {
@@ -313,6 +325,7 @@ Note: Make sure these actions are completely different from the previous generat
     setStyleInput(item.style || DEFAULT_STICKER_STYLE);
     setTexts(item.texts?.length === 4 ? [...item.texts] : createDefaultTexts());
     setGeneratedGrid(item.grid || null);
+    setPreparedImages(item.splitImages || []);
     setSplitImages([]);
     setSelectedHistoryId(item.id);
     setErrorMsg('');
@@ -342,6 +355,7 @@ Note: Make sure these actions are completely different from the previous generat
     selectedHistoryId,
     applySourceFile,
     clearSourceImage,
+    loadDemoSource,
     updateText,
     generateInspiration,
     startGeneration,

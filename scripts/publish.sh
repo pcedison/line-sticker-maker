@@ -21,7 +21,14 @@ fi
 echo "Running quality checks in $APP_DIR ..."
 (
   cd "$APP_DIR"
-  npm run check
+  npm run lint
+  npm run build
+  if [[ -x "node_modules/.bin/playwright" ]]; then
+    echo "Running UI smoke test ..."
+    npm run smoke:ui
+  else
+    echo "Playwright is not installed; skipping UI smoke test."
+  fi
 )
 
 echo "Staging changes ..."

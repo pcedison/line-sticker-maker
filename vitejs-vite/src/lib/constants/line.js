@@ -1,11 +1,30 @@
 export const DEFAULT_STICKER_STYLE = '可愛插畫';
 export const DEFAULT_STICKER_TEXTS = ['早安', '感謝你', '收到', '辛苦了'];
+export const DEFAULT_STICKER_THEME = '厭世上班族';
 
 export const LINE_STICKER_SIZE = {
   width: 370,
   height: 320,
   safeWidth: 350,
   safeHeight: 300,
+};
+
+export const LINE_STICKER_GRID = {
+  rows: 2,
+  cols: 2,
+};
+
+export const LINE_STICKER_TEXT_OVERLAY = {
+  reservedHeight: 82,
+  sidePadding: 18,
+  bandPaddingX: 18,
+  bandPaddingBottom: 12,
+  fontMaxSize: 44,
+  fontMinSize: 24,
+  strokeWidth: 10,
+  fontWeight: 900,
+  fontFamily:
+    '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif',
 };
 
 export const LINE_MAIN_SIZE = {

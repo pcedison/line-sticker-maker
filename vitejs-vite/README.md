@@ -25,3 +25,7 @@ Do not commit `.env`.
 ## Notes
 - This project intentionally keeps image processing in the browser.
 - If the product is exposed publicly, moving Gemini access behind a proxy remains strongly recommended.
+
+## Quick Verification
+- Open the generator with `?lab=1` to reveal the built-in test kit and load `hero.png` without manual upload.
+- Run `npm run smoke:ui` to start a local Vite server with a dummy Gemini key, mock Gemini in Playwright, and verify the full generator flow end to end.
