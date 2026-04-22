@@ -15,11 +15,13 @@ import { useBgRemover } from './useBgRemover';
 
 const BgRemoverPanel = () => {
   const {
+    hasGeminiApiKey,
     files,
     isProcessing,
     bgMode,
     setBgMode,
     errorMsg,
+    runState,
     applyFiles,
     clearFiles,
     processQueue,
@@ -28,6 +30,13 @@ const BgRemoverPanel = () => {
     downloadAll,
     stats,
   } = useBgRemover();
+
+  const runStateCopy = {
+    idle: '等待開始',
+    running: '處理中',
+    stopped: '已停止',
+    completed: '已完成',
+  };
 
   return (
     <div className="space-y-6 rounded-[30px] border border-white/10 bg-white/5 p-6 shadow-soft backdrop-blur sm:p-8">
@@ -60,17 +69,19 @@ const BgRemoverPanel = () => {
           </div>
           <div>
             <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
-              Active
+              Remaining
             </div>
             <div className="mt-1 font-semibold text-violet-300">
-              {stats.processing}
+              {stats.remaining}
             </div>
           </div>
           <div>
             <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
-              Error
+              Run State
             </div>
-            <div className="mt-1 font-semibold text-rose-300">{stats.error}</div>
+            <div className="mt-1 font-semibold text-rose-300">
+              {runStateCopy[runState]}
+            </div>
           </div>
         </div>
       </div>
@@ -126,11 +137,17 @@ const BgRemoverPanel = () => {
             <div className="grid gap-3">
               {BACKGROUND_MODES.map((mode) => {
                 const isActive = bgMode === mode.id;
+                const isAiMode = mode.id.startsWith('ai_');
+                const isDisabled = isAiMode && !hasGeminiApiKey;
 
                 return (
                   <label
                     key={mode.id}
                     className={`cursor-pointer rounded-2xl border px-4 py-3 transition ${
+                      isDisabled
+                        ? 'cursor-not-allowed border-white/5 bg-slate-950/40 text-slate-500'
+                        : ''
+                    } ${
                       isActive
                         ? 'border-violet-400/40 bg-violet-400/10 text-white'
                         : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/20'
@@ -142,11 +159,17 @@ const BgRemoverPanel = () => {
                       name="bgMode"
                       checked={isActive}
                       onChange={() => setBgMode(mode.id)}
+                      disabled={isDisabled}
                     />
                     <div className="font-semibold">{mode.label}</div>
                     <div className="mt-1 text-sm leading-6 text-slate-400">
                       {mode.description}
                     </div>
+                    {isDisabled && (
+                      <div className="mt-2 text-xs leading-5 text-amber-300">
+                        需先設定 `VITE_GEMINI_API_KEY`
+                      </div>
+                    )}
                   </label>
                 );
               })}
@@ -216,9 +239,24 @@ const BgRemoverPanel = () => {
                 </div>
               </div>
               <div className="text-sm text-slate-400">
-                已選 {stats.total} 張，完成 {stats.done} 張
+                已選 {stats.total} 張，完成 {stats.done} 張，失敗 {stats.error} 張
               </div>
             </div>
+
+            {stats.total > 0 && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <span>Batch Progress</span>
+                  <span>{stats.progressPercent}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 transition-all"
+                    style={{ width: `${stats.progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {files.length === 0 ? (

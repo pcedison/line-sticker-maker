@@ -69,10 +69,36 @@ export const generateStickerCopyPlan = async ({ theme, signal }) => {
     throw new Error('Gemini 未回傳可用的文案 JSON。');
   }
 
+  const normalized = textResponse
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/, '');
+
   try {
-    return JSON.parse(textResponse);
+    const parsed = JSON.parse(normalized);
+
+    if (!Array.isArray(parsed?.texts)) {
+      throw new Error('缺少 texts 陣列');
+    }
+
+    const texts = parsed.texts
+      .map((value) => String(value).trim())
+      .filter(Boolean)
+      .slice(0, 4);
+
+    if (texts.length !== 4) {
+      throw new Error('texts 長度不是 4');
+    }
+
+    return {
+      style: typeof parsed.style === 'string' ? parsed.style.trim() : '',
+      texts,
+    };
   } catch {
-    throw new Error('Gemini 文案結果無法解析成 JSON。');
+    throw new Error(
+      'Gemini 文案結果格式不正確，請重試或縮短主題描述。預期需要 4 句文字與 1 個 style。'
+    );
   }
 };
 

@@ -1,4 +1,6 @@
 import { startTransition, useRef, useState } from 'react';
+import { useNotices } from '../../app/useNotices';
+import { HAS_GEMINI_API_KEY } from '../../lib/config/env';
 import {
   BACKGROUND_MODES,
   BACKGROUND_MODE_COPY,
@@ -25,12 +27,15 @@ const semanticPrompts = {
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const DEFAULT_BG_MODE = HAS_GEMINI_API_KEY ? BACKGROUND_MODES[0].id : 'classic';
 
 export const useBgRemover = () => {
+  const { notify } = useNotices();
   const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bgMode, setBgMode] = useState(BACKGROUND_MODES[0].id);
+  const [bgMode, setBgMode] = useState(DEFAULT_BG_MODE);
   const [errorMsg, setErrorMsg] = useState('');
+  const [runState, setRunState] = useState('idle');
 
   const stopRequestedRef = useRef(false);
 
@@ -44,7 +49,9 @@ export const useBgRemover = () => {
     }
 
     if (files.length + selectedFiles.length > BG_BATCH_LIMIT) {
-      setErrorMsg(`超過上限 ${BG_BATCH_LIMIT} 張。你目前已選 ${files.length} 張。`);
+      const message = `超過上限 ${BG_BATCH_LIMIT} 張。你目前已選 ${files.length} 張。`;
+      setErrorMsg(message);
+      notify({ title: '批次上限超出', message, tone: 'error' });
       return;
     }
 
@@ -53,6 +60,13 @@ export const useBgRemover = () => {
     startTransition(() => {
       setFiles((current) => [...current, ...queueItems]);
       setErrorMsg('');
+    });
+
+    notify({
+      title: '圖片已加入佇列',
+      message: `新增 ${queueItems.length} 張圖片，現在共 ${files.length + queueItems.length} 張。`,
+      tone: 'success',
+      duration: 2600,
     });
   };
 
@@ -63,10 +77,22 @@ export const useBgRemover = () => {
 
     setFiles([]);
     setErrorMsg('');
+    setRunState('idle');
+    notify({
+      title: '已清空去背佇列',
+      message: '可以重新選擇一批新的圖片。',
+      tone: 'info',
+      duration: 2400,
+    });
   };
 
   const requestStopProcessing = () => {
     stopRequestedRef.current = true;
+    notify({
+      title: '已收到停止請求',
+      message: '系統會在完成目前這張圖後停止後續處理。',
+      tone: 'info',
+    });
   };
 
   const setItemState = (id, patch) => {
@@ -75,14 +101,32 @@ export const useBgRemover = () => {
     );
   };
 
+  const updateBgMode = (nextMode) => {
+    if (!HAS_GEMINI_API_KEY && nextMode.startsWith('ai_')) {
+      setBgMode('classic');
+      return;
+    }
+
+    setBgMode(nextMode);
+  };
+
   const processQueue = async () => {
     if (files.length === 0) {
+      return;
+    }
+
+    if (!HAS_GEMINI_API_KEY && bgMode.startsWith('ai_')) {
+      const message =
+        '目前未設定 VITE_GEMINI_API_KEY，AI 語意模式暫時不可用。你仍可改用原版綠幕直出。';
+      setErrorMsg(message);
+      notify({ title: '缺少 Gemini API 金鑰', message, tone: 'error' });
       return;
     }
 
     stopRequestedRef.current = false;
     setIsProcessing(true);
     setErrorMsg('');
+    setRunState('running');
 
     try {
       for (const item of files) {
@@ -124,6 +168,22 @@ export const useBgRemover = () => {
       }
     } finally {
       setIsProcessing(false);
+      const stopped = stopRequestedRef.current;
+      setRunState(stopped ? 'stopped' : 'completed');
+
+      if (stopped) {
+        notify({
+          title: '批次去背已停止',
+          message: '目前已保留已完成項目，未處理項目仍留在佇列中。',
+          tone: 'info',
+        });
+      } else {
+        notify({
+          title: '批次去背完成',
+          message: '已完成所有可處理項目，你可以直接下載結果。',
+          tone: 'success',
+        });
+      }
     }
   };
 
@@ -135,6 +195,12 @@ export const useBgRemover = () => {
     }
 
     downloadDataUrl(item.resultData, `${item.filename}_noBG.png`);
+    notify({
+      title: '已觸發下載',
+      message: `正在下載 ${item.filename}_noBG.png`,
+      tone: 'info',
+      duration: 2400,
+    });
   };
 
   const downloadAll = async () => {
@@ -151,21 +217,40 @@ export const useBgRemover = () => {
         dataUrl: item.resultData,
       })),
     });
+
+    notify({
+      title: 'ZIP 已開始下載',
+      message: '去背完成的圖片會一起打包下載。',
+      tone: 'success',
+      duration: 2600,
+    });
   };
+
+  const settledCount =
+    files.filter((item) => item.status === 'done').length +
+    files.filter((item) => item.status === 'error').length;
 
   const stats = {
     total: files.length,
     done: files.filter((item) => item.status === 'done').length,
     processing: files.filter((item) => item.status === 'processing').length,
     error: files.filter((item) => item.status === 'error').length,
+    ready: files.filter((item) => item.status === 'ready').length,
+    remaining: files.filter(
+      (item) => item.status === 'ready' || item.status === 'processing'
+    ).length,
+    progressPercent:
+      files.length === 0 ? 0 : Math.round((settledCount / files.length) * 100),
   };
 
   return {
+    hasGeminiApiKey: HAS_GEMINI_API_KEY,
     files,
     isProcessing,
     bgMode,
-    setBgMode,
+    setBgMode: updateBgMode,
     errorMsg,
+    runState,
     applyFiles,
     clearFiles,
     processQueue,

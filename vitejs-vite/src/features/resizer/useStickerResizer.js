@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNotices } from '../../app/useNotices';
 import { LINE_MAIN_SIZE, LINE_TAB_SIZE } from '../../lib/constants/line';
 import { downloadDataUrl } from '../../lib/download/browser';
 import {
@@ -8,6 +9,7 @@ import {
 import { resizeAndPadImage } from '../../lib/image/canvas';
 
 export const useStickerResizer = () => {
+  const { notify } = useNotices();
   const [image, setImage] = useState(null);
   const [filename, setFilename] = useState('');
   const [options, setOptions] = useState({ main: true, tab: true });
@@ -20,6 +22,12 @@ export const useStickerResizer = () => {
     const dataUrl = await fileToDataUrl(file);
     setImage(dataUrl);
     setFilename(filenameWithoutExtension(file.name));
+    notify({
+      title: '貼圖成品已載入',
+      message: '可以直接輸出 Main 與 Tab 尺寸。',
+      tone: 'success',
+      duration: 2400,
+    });
   };
 
   const toggleOption = (key, value) => {
@@ -58,6 +66,13 @@ export const useStickerResizer = () => {
         `${filename || 'sticker'}_Tab_${LINE_TAB_SIZE.width}x${LINE_TAB_SIZE.height}.png`
       );
     }
+
+    notify({
+      title: '尺寸檔案已輸出',
+      message: '所選規格的 PNG 檔案已開始下載。',
+      tone: 'success',
+      duration: 2600,
+    });
   };
 
   return {

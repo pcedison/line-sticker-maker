@@ -4,6 +4,7 @@ import GeneratorPanel from '../features/generator/GeneratorPanel';
 import ResizerPanel from '../features/resizer/ResizerPanel';
 import BgRemoverPanel from '../features/bg-remover/BgRemoverPanel';
 import { HAS_GEMINI_API_KEY } from '../lib/config/env';
+import { NoticeProvider } from './NoticeCenter';
 
 const tabs = [
   {
@@ -26,7 +27,7 @@ const tabs = [
   },
 ];
 
-const AppShell = () => {
+const AppShellContent = () => {
   const [activeTab, setActiveTab] = useState('generator');
 
   return (
@@ -138,5 +139,11 @@ const AppShell = () => {
     </div>
   );
 };
+
+const AppShell = () => (
+  <NoticeProvider>
+    <AppShellContent />
+  </NoticeProvider>
+);
 
 export default AppShell;

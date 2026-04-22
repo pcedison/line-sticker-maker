@@ -18,8 +18,8 @@ Legend:
 
 ## 2. Generator
 - [x] Extract generator workflow into `features/generator`.
-- [ ] Add richer validation and error states for inspiration JSON parsing.
-- [ ] Add better controls for generation history and variant comparison.
+- [x] Add richer validation and error states for inspiration JSON parsing.
+- [x] Add better controls for generation history and variant comparison.
 - [ ] Add export presets for sticker pack naming and download conventions.
 - [ ] Improve crop heuristics for white characters and low-contrast art.
 
@@ -31,15 +31,15 @@ Legend:
 ## 4. Background Remover
 - [x] Extract background remover workflow into `features/bg-remover`.
 - [x] Add cancel / stop processing for long-running batches.
-- [ ] Improve progress feedback with completed, failed, and remaining counts.
+- [x] Improve progress feedback with completed, failed, and remaining counts.
 - [ ] Refine green detection and edge protection to reduce false removals.
 - [ ] Evaluate optional worker offloading for heavy local image processing.
 
 ## 5. Shared UX
 - [x] Build a consistent app shell and tool panel structure.
-- [ ] Replace blocking `alert` / `confirm` flows with in-app notification patterns.
+- [x] Replace blocking `alert` / `confirm` flows with in-app notification patterns.
 - [ ] Improve mobile navigation and header overflow behavior.
-- [ ] Add empty states, recovery actions, and missing-config guidance.
+- [x] Add empty states, recovery actions, and missing-config guidance.
 
 ## 6. Quality
 - [x] Make `npm run lint` pass cleanly.
@@ -50,4 +50,5 @@ Legend:
 ## 7. Release Readiness
 - [x] Add `README.md` usage, setup, and architecture notes aligned to the refactor.
 - [x] Add `.env.example` and deployment instructions for local and hosted environments.
+- [x] Add a one-click publish helper for GitHub-backed preview updates.
 - [ ] Decide whether public production should keep pure frontend Gemini calls or move to a proxy.

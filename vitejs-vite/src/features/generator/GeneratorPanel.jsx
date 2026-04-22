@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  Clock3,
   Download,
   Image as ImageIcon,
   Play,
@@ -14,6 +15,7 @@ import { useStickerGenerator } from './useStickerGenerator';
 
 const GeneratorPanel = () => {
   const {
+    hasGeminiApiKey,
     sourceImage,
     sourceFileName,
     styleInput,
@@ -26,6 +28,8 @@ const GeneratorPanel = () => {
     generatedGrid,
     splitImages,
     errorMsg,
+    generationHistory,
+    selectedHistoryId,
     applySourceFile,
     clearSourceImage,
     updateText,
@@ -35,6 +39,7 @@ const GeneratorPanel = () => {
     splitGeneratedGrid,
     downloadSticker,
     downloadAll,
+    restoreHistoryItem,
   } = useStickerGenerator();
 
   return (
@@ -113,6 +118,13 @@ const GeneratorPanel = () => {
               AI 文案企劃
             </div>
 
+            {!hasGeminiApiKey && (
+              <div className="mb-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                需先設定 <code className="rounded bg-slate-950/50 px-1.5 py-0.5 text-xs">VITE_GEMINI_API_KEY</code>{' '}
+                才能使用 AI 文案企劃與四宮格生成。
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
@@ -124,7 +136,7 @@ const GeneratorPanel = () => {
               <button
                 type="button"
                 onClick={generateInspiration}
-                disabled={isThinking || !themeInput.trim()}
+                disabled={isThinking || !themeInput.trim() || !hasGeminiApiKey}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isThinking ? (
@@ -201,7 +213,7 @@ const GeneratorPanel = () => {
               <button
                 type="button"
                 onClick={() => startGeneration(false)}
-                disabled={!sourceImage}
+                disabled={!sourceImage || !hasGeminiApiKey}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Play size={16} fill="currentColor" />
@@ -211,7 +223,7 @@ const GeneratorPanel = () => {
               <button
                 type="button"
                 onClick={() => startGeneration(true)}
-                disabled={!generatedGrid}
+                disabled={!generatedGrid || !hasGeminiApiKey}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-4 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw size={16} />
@@ -267,6 +279,75 @@ const GeneratorPanel = () => {
                 className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10"
               />
             </div>
+
+            {generationHistory.length > 0 && (
+              <div className="rounded-[28px] border border-white/10 bg-slate-950/50 p-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      Recent Versions
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      最近生成紀錄
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    共保留 {generationHistory.length} 筆版本，可快速切回比較。
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  {generationHistory.map((item, index) => {
+                    const isActive = selectedHistoryId === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => restoreHistoryItem(item.id)}
+                        className={`rounded-3xl border p-4 text-left transition ${
+                          isActive
+                            ? 'border-emerald-400/35 bg-emerald-400/10'
+                            : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80">
+                            <img
+                              src={item.grid}
+                              alt={`歷史版本 ${index + 1}`}
+                              className="h-24 w-24 object-cover"
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                              <Clock3 size={14} />
+                              Version {generationHistory.length - index}
+                            </div>
+                            <div className="mt-2 line-clamp-2 text-sm font-semibold text-white">
+                              {item.style}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {item.texts.map((text) => (
+                                <span
+                                  key={`${item.id}-${text}`}
+                                  className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300"
+                                >
+                                  {text}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="mt-3 text-xs text-slate-500">
+                              {isActive ? '目前工作區使用中' : '點擊切換到此版本'}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {splitImages.length === 0 ? (
               <div className="flex justify-center">

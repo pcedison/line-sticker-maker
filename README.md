@@ -1,6 +1,6 @@
 # Line 貼圖全能工具箱
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/main/vitejs-vite?title=Line%20Sticker%20Master%20Toolkit)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
 
 GitHub source of truth for the LINE sticker toolkit project.
 
@@ -21,6 +21,19 @@ cd vitejs-vite
 npm run check
 ```
 
+## One-Click Publish
+Use the publish helper from the project root:
+
+```bash
+./scripts/publish.sh "your commit message"
+```
+
+The script will:
+- run `npm run check` inside `vitejs-vite`
+- stage all tracked and untracked changes
+- create a commit on the current branch
+- push to `origin/<current-branch>`
+
 ## Environment Variables
 Create `vitejs-vite/.env` locally:
 
@@ -36,6 +49,10 @@ For StackBlitz, add the same variable in the project environment variable settin
 3. Open the app in StackBlitz from the GitHub-backed URL above for cloud preview and cross-device checks.
 4. Refresh or reopen the StackBlitz project after each push to validate the latest changes.
 
+## StackBlitz Notes
+- Direct GitHub import works immediately when the repository is public.
+- If the repository stays private, StackBlitz requires a private-repo capable workflow on the StackBlitz side.
+
 ## Links
 - GitHub repo: [pcedison/line-sticker-maker](https://github.com/pcedison/line-sticker-maker)
-- StackBlitz app preview: [line-sticker-maker on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/main/vitejs-vite?title=Line%20Sticker%20Master%20Toolkit)
+- StackBlitz app preview: [line-sticker-maker on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
