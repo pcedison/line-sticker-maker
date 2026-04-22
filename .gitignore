@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# local editor noise
+.idea/
+.vscode/
+
+# nested frontend runtime artifacts
+/vitejs-vite/node_modules/
+/vitejs-vite/dist/
+/vitejs-vite/dist-ssr/
+/vitejs-vite/.env
+/vitejs-vite/.env.*
+!/vitejs-vite/.env.example
+
+# logs
+*.log
