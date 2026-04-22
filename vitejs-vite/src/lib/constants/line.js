@@ -1,6 +1,7 @@
 export const DEFAULT_STICKER_STYLE = '可愛插畫';
 export const DEFAULT_STICKER_TEXTS = ['早安', '感謝你', '收到', '辛苦了'];
 export const DEFAULT_STICKER_THEME = '厭世上班族';
+export const DEFAULT_STICKER_BACKGROUND_MODE = 'no_background';
 
 export const LINE_STICKER_SIZE = {
   width: 370,
@@ -25,6 +26,24 @@ export const LINE_STICKER_TEXT_OVERLAY = {
   fontWeight: 900,
   fontFamily:
     '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif',
+};
+
+export const STICKER_BACKGROUND_OPTIONS = [
+  {
+    id: 'no_background',
+    label: '不要背景',
+    description: '只保留主體與互動道具，系統會自動去除綠幕並套用繁體中文字。',
+  },
+  {
+    id: 'with_background',
+    label: '保留背景',
+    description: '保留場景背景，系統會嘗試偵測內框、紙邊或外圍留白後再裁切。',
+  },
+];
+
+export const STICKER_BACKGROUND_MODE_COPY = {
+  no_background: '無背景',
+  with_background: '保留背景',
 };
 
 export const LINE_MAIN_SIZE = {

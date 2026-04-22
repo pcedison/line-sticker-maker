@@ -16,13 +16,29 @@ export const buildStickerCopyPrompt = (theme) => `你是一個專業的 LINE 貼
   "texts": ["第一句", "第二句", "第三句", "第四句"]
 }`;
 
-export const buildStickerGridPrompt = ({ style, texts, isFollowUp = false }) => {
+export const buildStickerGridPrompt = ({
+  style,
+  texts,
+  backgroundMode,
+  isFollowUp = false,
+}) => {
   const panelPrompts = texts
     .map(
       (text, index) =>
         `Panel ${index + 1}: 以「${text}」這句貼圖文案對應的情緒、動作與情境來設計角色演出。`
     )
     .join('\n');
+
+  const backgroundInstruction =
+    backgroundMode === 'no_background'
+      ? `- Every panel must use a purely solid bright magenta (#FF00FF) background for chroma key removal.
+- The magenta background must connect cleanly to all four edges of each panel with no gradients, no texture, and no shadows in the background area.
+- Keep only the main character and essential interactive props. Remove room scenery, sky, walls, floors, and environmental set dressing unless the prop is directly used by the character.
+- Do NOT place the artwork inside a photo card, paper frame, inner square, sticker border, polaroid, postcard, or monitor-like window.`
+      : `- Keep a contextual scene background, but it must extend naturally to the panel edges.
+- Do NOT place the artwork inside an inner square, white border, beige paper frame, photo card, sticker card, polaroid, postcard, poster, or decorative panel border.
+- Avoid monitor windows, framed posters, paper mats, or inset boxes that create a second rectangle inside the panel.
+- Compose the scene as a full-bleed panel with clean margins for later LINE sticker cropping.`;
 
   return `You are creating a single LINE sticker sheet image.
 
@@ -38,6 +54,7 @@ Hard requirements:
 - Do NOT draw placeholder glyphs or fake handwritten scribbles that look like text.
 - Focus on expressive character acting, readable silhouettes, and uncluttered composition.
 - Use Traditional Chinese cultural tone in the acting and mood, but no visible text in the image.
+${backgroundInstruction}
 
 Scene directions:
 ${panelPrompts}

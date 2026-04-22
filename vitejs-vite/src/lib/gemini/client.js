@@ -188,5 +188,9 @@ export const generateImageWithReference = async ({
   return `data:image/png;base64,${imageData}`;
 };
 
-export const buildStickerImagePrompt = ({ style, texts, isFollowUp = false }) =>
-  buildStickerGridPrompt({ style, texts, isFollowUp });
+export const buildStickerImagePrompt = ({
+  style,
+  texts,
+  backgroundMode,
+  isFollowUp = false,
+}) => buildStickerGridPrompt({ style, texts, backgroundMode, isFollowUp });

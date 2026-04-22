@@ -84,6 +84,209 @@ const getContentBounds = (data, width, height, inset = 10) => {
   return { minX, minY, maxX, maxY };
 };
 
+const getFullBounds = (width, height) => ({
+  minX: 0,
+  minY: 0,
+  maxX: width - 1,
+  maxY: height - 1,
+});
+
+const expandBounds = (bounds, width, height, padding) => ({
+  minX: Math.max(0, bounds.minX - padding),
+  minY: Math.max(0, bounds.minY - padding),
+  maxX: Math.min(width - 1, bounds.maxX + padding),
+  maxY: Math.min(height - 1, bounds.maxY + padding),
+});
+
+const getBoundsFromMask = (mask, data, width, height, inset = 0) => {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = inset; y < height - inset; y += 1) {
+    for (let x = inset; x < width - inset; x += 1) {
+      const index = y * width + x;
+      const alpha = data[index * 4 + 3];
+
+      if (mask[index] === 0 && alpha > 16) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX === -1 || maxY === -1) {
+    return null;
+  }
+
+  return { minX, minY, maxX, maxY };
+};
+
+const quantizeChannel = (value) => Math.round(value / 24) * 24;
+
+const getDominantEdgeSwatch = (data, width, height, thickness = 6) => {
+  const buckets = new Map();
+  let total = 0;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (
+        x >= thickness &&
+        x < width - thickness &&
+        y >= thickness &&
+        y < height - thickness
+      ) {
+        continue;
+      }
+
+      const pixelIndex = (y * width + x) * 4;
+      const alpha = data[pixelIndex + 3];
+
+      if (alpha < 220) {
+        continue;
+      }
+
+      const r = quantizeChannel(data[pixelIndex]);
+      const g = quantizeChannel(data[pixelIndex + 1]);
+      const b = quantizeChannel(data[pixelIndex + 2]);
+      const key = `${r},${g},${b}`;
+      const count = buckets.get(key) || 0;
+      buckets.set(key, count + 1);
+      total += 1;
+    }
+  }
+
+  if (total === 0) {
+    return null;
+  }
+
+  let dominantKey = null;
+  let dominantCount = 0;
+  for (const [key, count] of buckets.entries()) {
+    if (count > dominantCount) {
+      dominantKey = key;
+      dominantCount = count;
+    }
+  }
+
+  if (!dominantKey) {
+    return null;
+  }
+
+  const [r, g, b] = dominantKey.split(',').map(Number);
+  return {
+    r,
+    g,
+    b,
+    ratio: dominantCount / total,
+  };
+};
+
+const isLikelyPaperFrame = (swatch) => {
+  if (!swatch) {
+    return false;
+  }
+
+  const channelSpread = Math.max(swatch.r, swatch.g, swatch.b) - Math.min(swatch.r, swatch.g, swatch.b);
+  const luma = swatch.r * 0.299 + swatch.g * 0.587 + swatch.b * 0.114;
+
+  return channelSpread <= 26 && luma >= 156 && swatch.ratio >= 0.38;
+};
+
+const isNearSwatch = (r, g, b, swatch, tolerance = 54) =>
+  Math.abs(r - swatch.r) + Math.abs(g - swatch.g) + Math.abs(b - swatch.b) <= tolerance;
+
+const detectPanelFrameBounds = (data, width, height) => {
+  const swatch = getDominantEdgeSwatch(data, width, height);
+
+  if (!isLikelyPaperFrame(swatch)) {
+    return null;
+  }
+
+  const mask = new Uint8Array(width * height);
+  const queue = [];
+
+  const pushIndex = (x, y) => {
+    queue.push(y * width + x);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    pushIndex(x, 0);
+    pushIndex(x, height - 1);
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    pushIndex(0, y);
+    pushIndex(width - 1, y);
+  }
+
+  for (let head = 0; head < queue.length; head += 1) {
+    const index = queue[head];
+
+    if (mask[index] === 1) {
+      continue;
+    }
+
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const pixelIndex = index * 4;
+    const alpha = data[pixelIndex + 3];
+    const r = data[pixelIndex];
+    const g = data[pixelIndex + 1];
+    const b = data[pixelIndex + 2];
+
+    if (alpha < 18 || isNearSwatch(r, g, b, swatch)) {
+      mask[index] = 1;
+
+      if (x > 0) queue.push(index - 1);
+      if (x < width - 1) queue.push(index + 1);
+      if (y > 0) queue.push(index - width);
+      if (y < height - 1) queue.push(index + width);
+    }
+  }
+
+  const bounds = getBoundsFromMask(mask, data, width, height, 4);
+
+  if (!bounds) {
+    return null;
+  }
+
+  const margins = {
+    left: bounds.minX,
+    top: bounds.minY,
+    right: width - bounds.maxX - 1,
+    bottom: height - bounds.maxY - 1,
+  };
+
+  const substantialMargins = Object.values(margins).filter(
+    (margin) => margin >= Math.min(width, height) * 0.04
+  ).length;
+  const averageHorizontalMargin = (margins.left + margins.right) / 2;
+  const averageVerticalMargin = (margins.top + margins.bottom) / 2;
+  const areaRatio =
+    ((bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1)) /
+    (width * height);
+
+  if (
+    substantialMargins < 2 ||
+    areaRatio <= 0.38 ||
+    areaRatio >= 0.94 ||
+    Math.abs(margins.left - margins.right) > width * 0.08 ||
+    Math.abs(margins.top - margins.bottom) > height * 0.08 ||
+    averageHorizontalMargin < width * 0.03 ||
+    averageHorizontalMargin > width * 0.24 ||
+    averageVerticalMargin < height * 0.03 ||
+    averageVerticalMargin > height * 0.24
+  ) {
+    return null;
+  }
+
+  return expandBounds(bounds, width, height, 4);
+};
+
 export const cropAndResizeForLineSticker = async (base64) => {
   const image = await loadImage(base64);
   const { canvas, context } = createCanvas(image.width, image.height, true);
@@ -242,18 +445,30 @@ const drawStickerCaption = (context, text) => {
   context.restore();
 };
 
-export const buildLineStickerFromGridPiece = async (base64, caption = '') => {
+export const buildLineStickerFromGridPiece = async (
+  base64,
+  caption = '',
+  options = {}
+) => {
+  const { backgroundMode = 'no_background' } = options;
   const image = await loadImage(base64);
   const { canvas, context } = createCanvas(image.width, image.height, true);
   context.drawImage(image, 0, 0);
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  const bounds = getContentBounds(imageData.data, canvas.width, canvas.height, 10);
+  const bounds =
+    backgroundMode === 'with_background'
+      ? detectPanelFrameBounds(imageData.data, canvas.width, canvas.height) ||
+        getFullBounds(canvas.width, canvas.height)
+      : getContentBounds(imageData.data, canvas.width, canvas.height, 10);
   const croppedWidth = bounds.maxX - bounds.minX + 1;
   const croppedHeight = bounds.maxY - bounds.minY + 1;
 
   const safeTop = (LINE_STICKER_SIZE.height - LINE_STICKER_SIZE.safeHeight) / 2;
-  const captionReserve = caption ? LINE_STICKER_TEXT_OVERLAY.reservedHeight : 0;
+  const captionReserve =
+    backgroundMode === 'no_background' && caption
+      ? LINE_STICKER_TEXT_OVERLAY.reservedHeight
+      : 0;
   const availableWidth = LINE_STICKER_SIZE.safeWidth;
   const availableHeight = LINE_STICKER_SIZE.safeHeight - captionReserve;
   const scale = Math.min(availableWidth / croppedWidth, availableHeight / croppedHeight);
@@ -310,12 +525,27 @@ export const combineStickerImagesIntoGrid = async (
   return canvas.toDataURL('image/png');
 };
 
-export const prepareStickerSetFromGrid = async (gridDataUrl, texts) => {
+export const prepareStickerSetFromGrid = async (
+  gridDataUrl,
+  texts,
+  backgroundMode = 'no_background'
+) => {
   const rawPieces = await splitGridIntoStickers(gridDataUrl);
   const stickers = await Promise.all(
-    rawPieces.map((piece, index) =>
-      buildLineStickerFromGridPiece(piece, texts[index] || `圖${index + 1}`)
-    )
+    rawPieces.map(async (piece, index) => {
+      const processedPiece =
+        backgroundMode === 'no_background'
+          ? await processGreenScreen(piece, { backdropColor: 'magenta' })
+          : piece;
+
+      return buildLineStickerFromGridPiece(
+        processedPiece,
+        texts[index] || `圖${index + 1}`,
+        {
+          backgroundMode,
+        }
+      );
+    })
   );
   const previewGrid = await combineStickerImagesIntoGrid(stickers);
 
@@ -354,7 +584,8 @@ const rgbToHsl = (r, g, b) => {
   return { h: (h / 6) * 360, s, l };
 };
 
-export const processGreenScreen = async (base64Src) => {
+export const processGreenScreen = async (base64Src, options = {}) => {
+  const { backdropColor = 'green' } = options;
   const image = await loadImage(base64Src);
   const { canvas, context } = createCanvas(image.width, image.height, true);
   context.drawImage(image, 0, 0);
@@ -381,6 +612,25 @@ export const processGreenScreen = async (base64Src) => {
       g >= b + 12
     );
   };
+
+  const isMagenta = (r, g, b) => {
+    if (Math.abs(r - 255) + Math.abs(g) + Math.abs(b - 255) < 22) {
+      return true;
+    }
+
+    const hsl = rgbToHsl(r, g, b);
+
+    return (
+      (hsl.h >= 285 || hsl.h <= 345) &&
+      hsl.s >= 0.24 &&
+      hsl.l >= 0.12 &&
+      hsl.l <= 0.95 &&
+      r >= g + 20 &&
+      b >= g + 20
+    );
+  };
+
+  const isBackdrop = backdropColor === 'magenta' ? isMagenta : isGreen;
 
   const isWhiteStroke = (r, g, b) => {
     const hsl = rgbToHsl(r, g, b);
@@ -409,7 +659,7 @@ export const processGreenScreen = async (base64Src) => {
     const y = Math.floor(index / width);
     const pixelIndex = index * 4;
 
-    if (isGreen(data[pixelIndex], data[pixelIndex + 1], data[pixelIndex + 2])) {
+    if (isBackdrop(data[pixelIndex], data[pixelIndex + 1], data[pixelIndex + 2])) {
       mask[index] = 1;
 
       if (x > 0) queue.push(index - 1);
@@ -456,8 +706,20 @@ export const processGreenScreen = async (base64Src) => {
       if (!protect) {
         data[pixelIndex + 3] = 0;
       }
-    } else if (data[pixelIndex + 1] > data[pixelIndex] && data[pixelIndex + 1] > data[pixelIndex + 2]) {
+    } else if (
+      backdropColor === 'green' &&
+      data[pixelIndex + 1] > data[pixelIndex] &&
+      data[pixelIndex + 1] > data[pixelIndex + 2]
+    ) {
       data[pixelIndex + 1] = (data[pixelIndex] + data[pixelIndex + 2]) / 2;
+    } else if (
+      backdropColor === 'magenta' &&
+      data[pixelIndex] > data[pixelIndex + 1] &&
+      data[pixelIndex + 2] > data[pixelIndex + 1]
+    ) {
+      const average = (data[pixelIndex] + data[pixelIndex + 2]) / 2;
+      data[pixelIndex] = (average + data[pixelIndex + 1]) / 2;
+      data[pixelIndex + 2] = (average + data[pixelIndex + 1]) / 2;
     }
   }
 

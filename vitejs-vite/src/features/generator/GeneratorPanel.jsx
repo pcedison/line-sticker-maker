@@ -14,6 +14,10 @@ import {
 } from 'lucide-react';
 import { useStickerGenerator } from './useStickerGenerator';
 import { isGeneratorLabEnabled } from '../../lib/config/runtime';
+import {
+  STICKER_BACKGROUND_MODE_COPY,
+  STICKER_BACKGROUND_OPTIONS,
+} from '../../lib/constants/line';
 
 const GeneratorPanel = () => {
   const {
@@ -23,6 +27,8 @@ const GeneratorPanel = () => {
     styleInput,
     setStyleInput,
     texts,
+    backgroundMode,
+    setBackgroundMode,
     themeInput,
     setThemeInput,
     isThinking,
@@ -187,6 +193,39 @@ const GeneratorPanel = () => {
           </div>
 
           <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">
+                背景模式
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {STICKER_BACKGROUND_OPTIONS.map((option) => {
+                  const isActive = backgroundMode === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      data-testid={`background-mode-${option.id}`}
+                      onClick={() => setBackgroundMode(option.id)}
+                      className={`rounded-2xl border px-4 py-4 text-left transition ${
+                        isActive
+                          ? 'border-emerald-400/35 bg-emerald-400/12 text-white'
+                          : 'border-white/10 bg-slate-950/60 text-slate-300 hover:border-white/20 hover:bg-slate-950/80'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      <div className="mt-1 text-xs leading-6 text-slate-400">
+                        {option.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs leading-6 text-slate-500">
+                `不要背景` 會優先保留主體與道具；`保留背景` 會保留場景並盡量修正內框與裁切範圍。
+              </p>
+            </div>
+
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">
                 整體風格描述
@@ -366,8 +405,13 @@ const GeneratorPanel = () => {
                               <Clock3 size={14} />
                               Version {generationHistory.length - index}
                             </div>
-                            <div className="mt-2 line-clamp-2 text-sm font-semibold text-white">
+                          <div className="mt-2 line-clamp-2 text-sm font-semibold text-white">
                               {item.style}
+                            </div>
+                            <div className="mt-2">
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300">
+                                {STICKER_BACKGROUND_MODE_COPY[item.backgroundMode || 'no_background']}
+                              </span>
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {item.texts.map((text) => (

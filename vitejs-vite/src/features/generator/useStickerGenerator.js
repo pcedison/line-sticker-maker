@@ -2,9 +2,11 @@ import { startTransition, useRef, useState } from 'react';
 import { useNotices } from '../../app/useNotices';
 import { HAS_GEMINI_API_KEY } from '../../lib/config/env';
 import {
+  DEFAULT_STICKER_BACKGROUND_MODE,
   DEFAULT_STICKER_THEME,
   DEFAULT_STICKER_STYLE,
   DEFAULT_STICKER_TEXTS,
+  STICKER_BACKGROUND_MODE_COPY,
 } from '../../lib/constants/line';
 import { downloadZip } from '../../lib/download/archive';
 import { downloadDataUrl } from '../../lib/download/browser';
@@ -32,6 +34,9 @@ export const useStickerGenerator = () => {
   const [sourceFileName, setSourceFileName] = useState('');
   const [styleInput, setStyleInput] = useState(DEFAULT_STICKER_STYLE);
   const [texts, setTexts] = useState(createDefaultTexts);
+  const [backgroundMode, setBackgroundMode] = useState(
+    DEFAULT_STICKER_BACKGROUND_MODE
+  );
   const [themeInput, setThemeInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -96,6 +101,7 @@ export const useStickerGenerator = () => {
     setThemeInput(DEFAULT_STICKER_THEME);
     setStyleInput(DEFAULT_STICKER_STYLE);
     setTexts(createDefaultTexts());
+    setBackgroundMode(DEFAULT_STICKER_BACKGROUND_MODE);
     notify({
       title: '測試素材已載入',
       message: '已套用內建角色圖與測試主題，可直接驗證 AI 流程。',
@@ -189,6 +195,7 @@ export const useStickerGenerator = () => {
       const finalPrompt = buildStickerImagePrompt({
         style: styleInput,
         texts,
+        backgroundMode,
         isFollowUp,
       });
       const outputImage = await generateImageWithReference({
@@ -198,7 +205,8 @@ export const useStickerGenerator = () => {
       });
       const { previewGrid, stickers } = await prepareStickerSetFromGrid(
         outputImage,
-        texts
+        texts,
+        backgroundMode
       );
 
       setGeneratedGrid(previewGrid);
@@ -212,6 +220,7 @@ export const useStickerGenerator = () => {
         createdAt: new Date().toISOString(),
         style: styleInput,
         texts: [...texts],
+        backgroundMode,
         grid: previewGrid,
         splitImages: stickers,
         sourceFileName,
@@ -222,8 +231,8 @@ export const useStickerGenerator = () => {
       notify({
         title: '四宮格已生成',
         message: isFollowUp
-          ? '已新增一個同主題的新版本，預覽與輸出都會套用可控的繁中文字覆蓋。'
-          : '預覽已套用可控的繁中文字覆蓋，可以直接切圖或繼續生成更多變體版本。',
+          ? `已新增一個同主題的新版本，並套用${STICKER_BACKGROUND_MODE_COPY[backgroundMode]}流程。`
+          : `預覽已套用${STICKER_BACKGROUND_MODE_COPY[backgroundMode]}流程與可控繁中文字覆蓋。`,
         tone: 'success',
       });
     } catch (error) {
@@ -324,6 +333,7 @@ export const useStickerGenerator = () => {
 
     setStyleInput(item.style || DEFAULT_STICKER_STYLE);
     setTexts(item.texts?.length === 4 ? [...item.texts] : createDefaultTexts());
+    setBackgroundMode(item.backgroundMode || DEFAULT_STICKER_BACKGROUND_MODE);
     setGeneratedGrid(item.grid || null);
     setPreparedImages(item.splitImages || []);
     setSplitImages([]);
@@ -344,6 +354,8 @@ export const useStickerGenerator = () => {
     styleInput,
     setStyleInput,
     texts,
+    backgroundMode,
+    setBackgroundMode,
     themeInput,
     setThemeInput,
     isThinking,
