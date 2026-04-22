@@ -6,10 +6,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/vitejs-vite"
 BRANCH="$(git -C "$ROOT_DIR" branch --show-current)"
 MESSAGE="${1:-publish updates}"
+STACKBLITZ_PATH="https://stackblitz.com/github/pcedison/line-sticker-maker"
 
 if [[ -z "$BRANCH" ]]; then
   echo "Unable to determine the current Git branch."
   exit 1
+fi
+
+if [[ "$BRANCH" != "main" ]]; then
+  STACKBLITZ_PATH="$STACKBLITZ_PATH/tree/$BRANCH"
 fi
 
 if [[ ! -d "$APP_DIR" ]]; then
@@ -40,4 +45,4 @@ git -C "$ROOT_DIR" push -u origin "$BRANCH"
 echo
 echo "Publish complete."
 echo "GitHub: https://github.com/pcedison/line-sticker-maker"
-echo "StackBlitz: https://stackblitz.com/github/pcedison/line-sticker-maker?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit"
+echo "StackBlitz: ${STACKBLITZ_PATH}?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit"

@@ -1,6 +1,6 @@
 # Line 貼圖全能工具箱
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
 
 GitHub source of truth for the LINE sticker toolkit project.
 
@@ -34,6 +34,9 @@ The script will:
 - create a commit on the current branch
 - push to `origin/<current-branch>`
 
+For the live preview workflow, keep your local workspace on the `preview` branch.
+That way every Codex-delivered change can be published to the StackBlitz preview URL directly.
+
 ## Environment Variables
 Create `vitejs-vite/.env` locally:
 
@@ -44,10 +47,15 @@ VITE_GEMINI_API_KEY=your_key_here
 For StackBlitz, add the same variable in the project environment variable settings.
 
 ## Recommended Workflow
-1. Develop and test primarily on your local machine.
-2. Commit and push this repository to update the canonical source.
-3. Open the app in StackBlitz from the GitHub-backed URL above for cloud preview and cross-device checks.
-4. Refresh or reopen the StackBlitz project after each push to validate the latest changes.
+1. Keep active development on the `preview` branch.
+2. Develop and test primarily on your local machine.
+3. Let Codex publish the latest changes from `preview`.
+4. Open the app in StackBlitz from the GitHub-backed preview URL above for cloud preview and cross-device checks.
+5. Refresh or reopen the StackBlitz project after each push to validate the latest changes.
+
+## Branch Roles
+- `main`: stable baseline
+- `preview`: always-on StackBlitz preview branch
 
 ## StackBlitz Notes
 - Direct GitHub import works immediately when the repository is public.
@@ -55,4 +63,5 @@ For StackBlitz, add the same variable in the project environment variable settin
 
 ## Links
 - GitHub repo: [pcedison/line-sticker-maker](https://github.com/pcedison/line-sticker-maker)
-- StackBlitz app preview: [line-sticker-maker on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
+- StackBlitz live preview: [line-sticker-maker preview on StackBlitz](https://stackblitz.com/github/pcedison/line-sticker-maker/tree/preview?configPath=vitejs-vite&startScript=dev&title=Line%20Sticker%20Master%20Toolkit)
+- Stable branch on GitHub: [main branch](https://github.com/pcedison/line-sticker-maker/tree/main)
