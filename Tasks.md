@@ -14,7 +14,7 @@ Legend:
 - [x] Replace hardcoded API key usage with environment-based configuration.
 - [x] Replace runtime JSZip CDN loading with an installed package.
 - [x] Replace HTML-injected Tailwind CDN usage with managed build-time Tailwind.
-- [ ] Add `.env` handling notes to all developer-facing docs.
+- [x] Add `.env` handling notes to all developer-facing docs.
 
 ## 2. Generator
 - [x] Extract generator workflow into `features/generator`.
