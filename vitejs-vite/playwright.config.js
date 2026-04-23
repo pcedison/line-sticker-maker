@@ -16,8 +16,11 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command:
-      'VITE_GEMINI_API_KEY=e2e_dummy npm run dev -- --host 127.0.0.1 --port 4173',
+    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    env: {
+      ...process.env,
+      VITE_GEMINI_API_KEY: 'e2e_dummy',
+    },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: true,
     timeout: 60_000,
