@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:live": "node scripts/dev-live.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "npm run lint && npm run build",
+    "ready": "npm run check && npm run smoke:ui",
+    "sync:preview": "node scripts/sync-preview.mjs",
+    "env:init": "node scripts/init-env.mjs",
+    "verify:local-gemini": "node scripts/verify-local-gemini.mjs",
+    "setup:dev": "node scripts/bootstrap-dev.mjs",
     "test:e2e": "playwright test",
     "smoke:ui": "playwright test e2e/generator.smoke.spec.js --project=chromium",
     "test:e2e:install": "playwright install chromium"
